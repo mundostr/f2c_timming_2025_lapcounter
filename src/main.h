@@ -4,10 +4,6 @@
 #include "display.h"
 
 namespace main {
-    uint32_t beat_timer = 0;
-    uint32_t buzzer_timer = 0;
-    uint32_t beat_back_timer = 0;
-
     void init() {
         #if DEBUG
         Serial.begin(115200);
@@ -28,16 +24,18 @@ namespace main {
 
     void beat() {
         if (millis() - beat_timer >= BEAT_FREQ) {
-            if (!buzzing) {
+            beat_timer = millis();
+            
+            // if (!buzzing && quickEspNow.readyToSendData()) {
                 sending_laps = false;
                 const String payload = ((String)device_id + ",BEAT");
-                quickEspNow.send(espnow_gateway, (uint8_t*)payload.c_str(), 6);
-            }
-
-            beat_timer = millis();
+                quickEspNow.send (espnow_gateway, (uint8_t*)payload.c_str (), payload.length ());
+            // }
         }
 
         if (millis() - beat_back_timer >= BEAT_BACK_FREQ) {
+            beat_back_timer = millis();
+
             connection_on = false;
             display::show_status();
         }

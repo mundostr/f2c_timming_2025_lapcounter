@@ -10,7 +10,6 @@ void setup() {
     radio::init_espnow();
 
     display::show_laps();
-    display::show_status();
 
     #if DEBUG
     Serial.println("SYSTEM STARTED");
@@ -20,6 +19,7 @@ void setup() {
 void loop() {
     main::beat();
     main::buzz();
+    buttons::btn.loop();
     
     if (update_laps) {
         update_laps = false;

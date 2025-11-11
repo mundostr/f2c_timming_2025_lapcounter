@@ -5,20 +5,14 @@
 #include "display.h"
 
 namespace radio {
-    void wf_reset() {
-        WiFi.persistent(false);
-        WiFi.disconnect();
-        WiFi.mode(WIFI_OFF);
-    }
-
-    void dataReceived (uint8_t* address, uint8_t* data, uint8_t len, signed int rssi, bool broadcast) {
+    void on_data_recv(uint8_t* address, uint8_t* data, uint8_t len, signed int rssi, bool broadcast) {
         char incoming[16];
 
         connection_on = true;
         snprintf(incoming, len + 1, "%s", data);
         
         if (strcmp(incoming, "4,CONN") == 0) {
-            main::beat_back_timer = millis();
+            beat_back_timer = millis();
             display::show_status();
         }
 
@@ -36,40 +30,51 @@ namespace radio {
         #endif
     }
 
-    void dataSent(uint8_t* address, uint8_t status) {
+    void on_data_sent(uint8_t* address, uint8_t status) {
         if (status == ESP_NOW_SEND_SUCCESS && sending_laps) {
             buzzing = true;
             sending_laps = false;
-            main::buzzer_timer = millis();
+            buzzer_timer = millis();
             
             digitalWrite(PIN_BUZZER, HIGH);
         }
     }
 
     void init_espnow() {
-        wf_reset();
-        WiFi.mode(WIFI_STA);
+        WiFi.mode(WIFI_MODE_STA);
+        delay(500);
 
-        uint8_t primary_channel = ESPNOW_CHANNEL;
-        wifi_second_chan_t secondary_channel = WIFI_SECOND_CHAN_NONE;
-        esp_wifi_set_promiscuous(true);
-        if (esp_wifi_set_channel(primary_channel, secondary_channel) == ESP_OK) {
-            #if DEBUG
-            Serial.printf("Canal ESPNOW cambiado a %i\n", ESPNOW_CHANNEL);
+        // esp_wifi_set_promiscuous(true);
+        if (esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE) == ESP_OK) {
+            #ifdef DEBUG
+            Serial.printf("ESPNOW channel moved to %i\n", ESPNOW_CHANNEL);
             #endif
         } else {
-            #if DEBUG
-            Serial.printf("ERROR al cambiar canal\n");
-            #endif
+            delay(500);
+            ESP.restart();
         }
-        esp_wifi_set_promiscuous(false);
+        // esp_wifi_set_promiscuous(false);
 
-        quickEspNow.onDataRcvd(dataReceived);
-        quickEspNow.onDataSent(dataSent);
-        quickEspNow.begin(ESPNOW_CHANNEL);
+        quickEspNow.onDataSent (on_data_sent);
+        quickEspNow.onDataRcvd (on_data_recv);
+        quickEspNow.begin (ESPNOW_CHANNEL);
 
+        esp_now_peer_info_t peer = {};
+        peer.channel = ESPNOW_CHANNEL;
+        peer.encrypt = false;
+        peer.ifidx = WIFI_IF_STA;
+        memcpy(peer.peer_addr, espnow_gateway, 6);
+
+        if (esp_now_add_peer(&peer) != ESP_OK) {
+            #if DEBUG
+            Serial.println("Failed to add peer");
+            #endif
+
+            while (1);
+        }
+        
         #if DEBUG
-        Serial.println("ESP-NOW inicializado");
+        Serial.println("ESPNOW init OK");
         Serial.println(WiFi.localIP());
         Serial.println(WiFi.channel());
         Serial.println(WiFi.macAddress());
@@ -79,8 +84,14 @@ namespace radio {
     }
 
     void send_laps() {
-        sending_laps = true;
-        const String payload = ((String)device_id + "," + (String)laps);
-        quickEspNow.send(espnow_gateway, (uint8_t*)payload.c_str(), 5);
+        // if (quickEspNow.readyToSendData()) {           
+            sending_laps = true;
+            const String payload = ((String)device_id + "," + (String)laps);
+            quickEspNow.send (espnow_gateway, (uint8_t*)payload.c_str (), payload.length ());
+            
+            #if DEBUG
+            Serial.printf("Sending laps: %i\n", laps);
+            #endif
+		// }
     }
 }

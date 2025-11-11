@@ -14,14 +14,15 @@ https://github.com/gmag11/QuickEspNow
 
 #pragma once
 
-#include <WiFi.h>
 #include <Arduino.h>
-#include <Button2.h>
+#include <WiFi.h>
+#include <esp_wifi.h>
 #include <QuickEspNow.h>
+#include <Button2.h>
 #include <LiquidCrystal.h>
 #include "LCDBigNumbers.hpp"
 
-#define DEBUG true
+#define DEBUG false
 
 #define PIN_LED GPIO_NUM_2
 #define PIN_BUTTON GPIO_NUM_12
@@ -49,4 +50,10 @@ bool buzzing = false;
 bool update_laps = false;
 bool connection_on = false;
 bool sending_laps = false;
-uint8_t espnow_gateway[] = { 0xB4, 0xE6, 0x2D, 0xE9, 0xFE, 0x6E }; // we are using custom mac
+uint32_t beat_timer = 0;
+uint32_t buzzer_timer = 0;
+uint32_t beat_back_timer = 0;
+
+uint8_t espnow_gateway[] = { 0x30, 0xAE, 0xA4, 0x1F, 0x44, 0x0C }; // we are using custom mac
+// uint8_t espnow_gateway[] = { 0xB4, 0xE6, 0x2D, 0xE9, 0xFE, 0x6E }; // we are using custom mac
+// uint8_t this_mac_address[] = { 0X7C, 0X9E, 0XBD, 0X65, 0XF7, 0XF8 };
